@@ -1,5 +1,8 @@
 <?php
-class Ajax_Handler extends Base_API {
+namespace WP_API_ENDPOINTS\ENDPOINT_HANDLER;
+use WP_API_ENDPOINTS\BASE_API as BASE_API;
+
+class Ajax_Handler extends BASE_API\Base_API {
 
 	/**
 	 * Used internal to set the current functions context to the admin.
@@ -50,6 +53,7 @@ class Ajax_Handler extends Base_API {
 	 * Bootstraps the Class and contains all required WordPress Hooks.
 	 */
 	public function setup() {
+		$this->add_frontend_endpoint( 'documentation' );
 		add_action( 'wp_enqueue_scripts', array( $this, 'enqueue_localized_data' ) );
 		add_action( 'admin_enqueue_scripts', array( $this, 'enqueue_localized_data' ) );
 	}
@@ -78,7 +82,7 @@ class Ajax_Handler extends Base_API {
 	 * @param $func_name (string) - Name of endpoint callback function.
 	 *
 	 * @return (int) - Returns the new number of elements in the array.
-	 * @throws Exception
+	 * @throws \Exception
 	 */
 	public function add_frontend_endpoint( $func_name ) {
 		return $this->add_endpoint( $func_name, self::FRONT );
@@ -89,7 +93,7 @@ class Ajax_Handler extends Base_API {
 	 * @param $func_name (string) - Name of endpoint callback function.
 	 *
 	 * @return (array) Returns an array consisting of the extracted element.
-	 * @throws Exception
+	 * @throws \Exception
 	 */
 	public function remove_frontend_endpoint( $func_name ) {
 		return $this->remove_endpoint( $func_name, self::FRONT );
@@ -100,7 +104,7 @@ class Ajax_Handler extends Base_API {
 	 * @param $func_name (string) - Name of endpoint callback function.
 	 *
 	 * @return (int) - Returns the new number of elements in the array.
-	 * @throws Exception
+	 * @throws \Exception
 	 */
 	public function add_admin_endpoint( $func_name ) {
 		return $this->add_endpoint( $func_name, self::ADMIN );
@@ -111,7 +115,7 @@ class Ajax_Handler extends Base_API {
 	 * @param $func_name (string) - Name of endpoint callback function.
 	 *
 	 * @return (array) Returns an array consisting of the extracted element.
-	 * @throws Exception
+	 * @throws \Exception
 	 */
 	public function remove_admin_endpoint( $func_name ) {
 		return $this->remove_endpoint( $func_name, self::ADMIN );
@@ -135,7 +139,7 @@ class Ajax_Handler extends Base_API {
 	 * @param $js_handle (string) localization name
 	 *
 	 * @return (bool) true if item was successfully removed.
-	 * @throws Exception
+	 * @throws \Exception
 	 */
 	public function remove_admin_localization( $js_handle ) {
 		return $this->remove_localization( $js_handle, self::ADMIN );
@@ -159,7 +163,7 @@ class Ajax_Handler extends Base_API {
 	 * @param $js_handle (string) localization name
 	 *
 	 * @return (bool) true if item was successfully removed.
-	 * @throws Exception
+	 * @throws \Exception
 	 */
 	public function remove_frontend_localization( $js_handle ) {
 		return $this->remove_localization( $js_handle, self::FRONT );
@@ -186,11 +190,11 @@ class Ajax_Handler extends Base_API {
 	//======================================================================
 
 	private function add_endpoint( $func_name, $context ) {
-		if ( function_exists( $func_name ) ) {
+		if ( function_exists( $func_name ) || method_exists( $this, $func_name ) ) {
 			$context = $this->set_context( $context );
 			return array_push( static::$$context['endpoint'], $func_name );
 		}
-		throw new Exception( 'Endpoint function does not exist' );
+		throw new \Exception( 'Endpoint function does not exist' );
 	}
 
 	private function remove_endpoint( $func_name, $context ) {
@@ -198,14 +202,14 @@ class Ajax_Handler extends Base_API {
 			$context = $this->set_context( $context );
 			return $this->remove_element( $func_name, $this->$context['collection'] );
 		}
-		throw new Exception( 'Cannot remove an endpoint that doesn\'t exist' );
+		throw new \Exception( 'Cannot remove an endpoint that doesn\'t exist' );
 	}
 
 	private function remove_localization( $js_handle, $context ) {
 		$context = $this->set_context( $context );
 
 		if ( empty( $context['collection'] ) ) {
-			throw new Exception( 'No localizations exist for the ' . $context['collection'] );
+			throw new \Exception( 'No localizations exist for the ' . $context['collection'] );
 		}
 
 		foreach ( $context['collection'] as $key => $el ) {
@@ -217,7 +221,8 @@ class Ajax_Handler extends Base_API {
 		return false;
 	}
 
-	private function add_localization( $endpoint, $js_handle, $local_handle, $data, $context ) {
+	//TODO need to make it possible to localize no data.
+	private function add_localization( $endpoint, $js_handle, $local_handle, $data = array(), $context ) {
 
 		if ( true ) {
 			$context = $this->set_context( $context );
@@ -285,7 +290,7 @@ class Ajax_Handler extends Base_API {
 		$key = array_search( $el, $collection );
 
 		if ( false === $key ) {
-			throw new Exception( 'Array value does not exist' );
+			throw new \Exception( 'Array value does not exist' );
 		}
 
 		return array_splice( $collection, $key, $length );
@@ -307,7 +312,7 @@ class Ajax_Handler extends Base_API {
 }
 
 
-class MyAjax extends Base_API {
+class MyAjax extends BASE_API\Base_API {
 
 	public function register_default_endpoint() {
 
@@ -347,24 +352,24 @@ class MyAjax extends Base_API {
 	private function is_valid_localization( $js_handle, $data ) {
 
 		if ( empty( $data ) ) {
-			throw new Exception( 'Data argument was empty' );
+			throw new \Exception( 'Data argument was empty' );
 		}
 
 		if ( ! is_array( $data ) ) {
-			throw new Exception( 'Data argument must be an array' );
+			throw new \Exception( 'Data argument must be an array' );
 		}
 
 		if ( ! $this->is_assoc( $data ) ) {
-			throw new Exception( 'Data argument must be an associative array' );
+			throw new \Exception( 'Data argument must be an associative array' );
 		}
 
 		$values = array_values( $data );
 		if ( ! function_exists( $values[0] ) ) {
-			throw new Exception( 'Function referenced in the Data array does not exist.' );
+			throw new \Exception( 'Function referenced in the Data array does not exist.' );
 		}
 
 		if ( ! wp_script_is( $js_handle ) ) {
-			throw new Exception( 'Javascript handle has not been registered with WordPress.' );
+			throw new \Exception( 'Javascript handle has not been registered with WordPress.' );
 		}
 
 		return true;

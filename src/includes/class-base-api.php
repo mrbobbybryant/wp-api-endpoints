@@ -1,4 +1,5 @@
 <?php
+namespace WP_API_ENDPOINTS\BASE_API;
 
 /**
  * Class Base_API
