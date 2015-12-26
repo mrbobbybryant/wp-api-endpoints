@@ -25,7 +25,15 @@ function ajax_enqueue_scripts() {
 			AJAX_EP_HANDLER_URL . 'assets/js/ajax-handler.js',
 			array(),
 			AJAX_EP_HANDLER_VERSION,
-			true);
+			true
+	);
+
+	wp_enqueue_script('prism_js',
+			AJAX_EP_HANDLER_URL . 'assets/vendor/prismjs/prism.js',
+			array(),
+			'',
+			true
+	);
 
 	wp_enqueue_style(
 			'ajax_handler_css',
@@ -34,33 +42,80 @@ function ajax_enqueue_scripts() {
 			AJAX_EP_HANDLER_VERSION
 	);
 
+	wp_enqueue_style(
+			'prism_css',
+			AJAX_EP_HANDLER_URL . 'assets/vendor/prismjs/prism.css',
+			array(),
+			''
+	);
+
 }
 add_action( 'wp_enqueue_scripts', 'ajax_enqueue_scripts' );
 add_action( 'admin_enqueue_scripts', 'ajax_enqueue_scripts' );
 
-/**
- * Arguments can also be used directly in the method
- *
- * @param $arg1
- * @param $arg2
- */
-function another_endpoint( $arg1 = 'default', $arg2 = array() ) {
-//		if ( $response = another_function_call( $arg1, $arg2 ) ) {
-//			wp_send_json( $response );
-//		} else {
-//			wp_send_json_error( 'No fake results' );
-//		}
-	wp_send_json_success( 'I am the another endpoint' );
-}
-
 function documentation() {
-	$args = func_get_args();
-	wp_send_json_success( 'i am the Docs' );
+	?>
+		<div style="width: 70%; margin: 0 auto;">
+			<h1>Documentation</h1>
+			<h3>Overview</h3>
+			<p>
+				The WP-API_endpoints Library provides an esy to use interface for creating and
+				using custom API Endpoints.
+
+				The heart of the library is two classes. A Base Abstract class that contains the
+				core logic for creating endpoints. An API class to interacting with the base enpoint class.
+
+				This library has been designed to allow you the ability to create classes in a procedural
+				fashion via the Endpoint API Class.
+
+				However, because the core logic is in an Abstract class, you can also simply extend it with your
+				own class based approach.
+
+				But to get started let take a quick look at how we can create endpoints using the Endpoint API Class.
+			</p>
+			<pre>
+				<code class="language-php">
+					function get_author_list() {
+						$authors = get_users('role=author');
+						wp_send_json_success( json_encode( $authors ) );
+					}
+
+					$ajax_handler = new Ajax_Handler();
+					$ajax_handler->add_admin_endpoint( 'get_author_list' );
+				</code>
+			</pre>
+			<p>
+				In the above example, we have created our first endpoint.
+			</p>
+			<ul>
+				<li>
+					Step one is to define the
+					callback function which will handle any requests to the endpoint.
+				</li>
+				<li>
+					The second step is to initialize the Endpoint API Class.
+				</li>
+				<li>
+					The third step leverages a method in the Endpoint API class
+					called <code class="language-php">add_admin_endpoint()</code>
+				</li>
+			</ul>
+			<p>
+				Thats it. Now if you navigate to yoursite.com/ajax/get_author_list, you will see
+				a JSON feed of all users who have the role of author assigned. Another thing to point
+				out is that this endpoint is an Admin Endponit, so only logged in users are able
+				to hit it.
+			</p>
+		</div>
+
+	<?php
 }
 
 function admin_endpoint() {
-	wp_send_json_success( 'i am the admin endpoint' );
+	$users = get_users();
+	wp_send_json_success( json_encode( $users ) );
 }
+
 $ajax_handler = new Ajax_Handler();
 
 
