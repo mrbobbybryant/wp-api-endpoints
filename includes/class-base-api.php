@@ -76,6 +76,7 @@ abstract class Base_API {
 
 		$api      = explode( '/', $wp_query->query_vars[ static::$rewrite_endpoint ] );
 		$endpoint = array_shift( $api );
+		$admin = in_array( $endpoint, static::$admin_endpoints);
 
 		if ( ( ! in_array( $endpoint, static::$front_endpoints ) && ! $admin = in_array( $endpoint, static::$admin_endpoints ) ) ||
 		     ! method_exists( $this, $endpoint )
@@ -84,7 +85,7 @@ abstract class Base_API {
 		}
 
 		if ( $admin && ! $this->is_user_admin() ) {
-			wp_send_json_error( 'admin endpoint only.' );
+			wp_send_json_error( 'This is an Admin Endpoint. You must be logged in to access it.' );
 		}
 		call_user_func_array( array( $this, $endpoint ), $api );
 	}
