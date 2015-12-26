@@ -1,7 +1,7 @@
 <?php
 /*
-Plugin Name: Ajax Handler
-Description: A library for creating Ajax processes in WordPress.
+Plugin Name: WP API ENDPOINT
+Description: A library for creating and managing custom endpoints in WordPress.
 Version:     0.0.1
 Author:      Bobby Bryant
 Author URI:  http://mrbobbybryant.com

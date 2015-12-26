@@ -77,17 +77,29 @@ abstract class Base_API {
 		$api      = explode( '/', $wp_query->query_vars[ static::$rewrite_endpoint ] );
 		$endpoint = array_shift( $api );
 		$admin = in_array( $endpoint, static::$admin_endpoints);
+		$is_function = function_exists( $endpoint );
+		$is_method = method_exists( $this, $endpoint );
 
-		if ( ( ! in_array( $endpoint, static::$front_endpoints ) && ! $admin = in_array( $endpoint, static::$admin_endpoints ) ) ||
-		     ! method_exists( $this, $endpoint )
-		) {
-			wp_send_json_error( 'endpoint does not exist.' );
+		if ( ! in_array( $endpoint, static::$front_endpoints ) && ! $admin ) {
+			wp_send_json_error( 'Endpoint does not exist. Verify Endpoint exists. You may need to flush rewrites manually.' );
+		}
+
+		if ( ! $is_function && ! $is_method ) {
+			wp_send_json_error( 'Endpoint function/method does not exist.' );
 		}
 
 		if ( $admin && ! $this->is_user_admin() ) {
 			wp_send_json_error( 'This is an Admin Endpoint. You must be logged in to access it.' );
 		}
-		call_user_func_array( array( $this, $endpoint ), $api );
+
+		if ( $is_method ) {
+			call_user_func_array( array( $this, $endpoint ), $api );
+		}
+
+		if ( $is_function ) {
+			call_user_func( $endpoint, $api );
+		}
+
 	}
 
 	/**
