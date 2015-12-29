@@ -29,7 +29,7 @@ class Ajax_Handler extends BASE_API\Base_API {
 	 * Possible action endpoints "/ajax/$action" any $action that doesn't exist in the array will return an error
 	 * @var array
 	 */
-	protected static $front_endpoints = array( 'another_endpoint' );
+	protected static $front_endpoints = array( 'ajax_handler' );
 
 	/**
 	 * Possible admin only endpoints, a user without permissions will get an error trying to request this
@@ -50,11 +50,19 @@ class Ajax_Handler extends BASE_API\Base_API {
 	protected static $front_localized_data = array();
 
 	/**
+	 * Consists of an array of all endpoint URL's
+	 * @var array
+	 */
+	protected static $endpoint_urls = array();
+
+	/**
 	 * Bootstraps the Class and contains all required WordPress Hooks.
 	 */
 	public function setup() {
-		$this->add_frontend_endpoint( 'documentation' );
+		$url = $this->get_endpoint_url() . '/ajax_handler';
+		array_push( static::$endpoint_urls, $url );
 		add_action( 'wp_enqueue_scripts', array( $this, 'enqueue_localized_data' ) );
+		add_action( 'admin_enqueue_scripts', array( $this, 'localize_general_endpoint_data' ) );
 		add_action( 'admin_enqueue_scripts', array( $this, 'enqueue_localized_data' ) );
 	}
 
@@ -63,7 +71,6 @@ class Ajax_Handler extends BASE_API\Base_API {
 	 */
 	public function enqueue_localized_data() {
 
-		//TODO throw exception if script handle does not exist.
 		if ( is_admin() && ! empty( static::$admin_localized_data ) ) {
 			$this->register_localizations( static::$admin_localized_data );
 		}
@@ -72,6 +79,20 @@ class Ajax_Handler extends BASE_API\Base_API {
 			$this->register_localizations( static::$front_localized_data );
 		}
 	}
+
+	/**
+	 * Internal localization which provides a snapshot of all data register with the
+	 * Ajax Handler class.
+	 */
+	public function localize_general_endpoint_data() {
+		$data = $this->get_default_localization_data();
+		wp_localize_script( 'jquery-core', 'endpointData', $data );
+	}
+
+	public function ajax_handler() {
+		wp_send_json_success( 'I\'m am the ajax Handler' );
+	}
+
 
 	//======================================================================
 	// EXTERNAL API METHODS
@@ -128,7 +149,8 @@ class Ajax_Handler extends BASE_API\Base_API {
 	 * @param $local_handle (string) Unique Name for this Localization.
 	 * @param $data (array) Associative array of data to include with this localization.
 	 *
-	 * @return array|bool false
+	 * @return array
+	 * @throws \Exception
 	 */
 	public function add_admin_localization( $endpoint, $js_handle, $local_handle, $data ) {
 		return $this->add_localization( $endpoint, $js_handle, $local_handle, $data, self::ADMIN );
@@ -152,7 +174,8 @@ class Ajax_Handler extends BASE_API\Base_API {
 	 * @param $local_handle (string) Unique Name for this Localization.
 	 * @param $data (array) Associative array of data to include with this localization.
 	 *
-	 * @return array|bool false
+	 * @return array
+	 * @throws \Exception
 	 */
 	public function add_frontend_localization( $endpoint, $js_handle, $local_handle, $data ) {
 		return $this->add_localization( $endpoint, $js_handle, $local_handle, $data, self::FRONT );
@@ -169,34 +192,85 @@ class Ajax_Handler extends BASE_API\Base_API {
 		return $this->remove_localization( $js_handle, self::FRONT );
 	}
 
+	/**
+	 * Return an array of all Front-end Endpoints, or false if none exist.
+	 * @return array|bool
+	 */
 	public function get_frontend_endpoints() {
-		return self::$front_endpoints;
+		if ( ! empty( self::$front_endpoints ) ) {
+			return self::$front_endpoints;
+		}
+		return false;
 	}
 
+	/**
+	 * Return an array of all Admin Endpoints, or false if none exist.
+	 * @return array|bool
+	 */
 	public function get_admin_endpoints() {
-		return self::$admin_endpoints;
+		if ( ! empty( self::$admin_endpoints ) ) {
+			return self::$admin_endpoints;
+		}
+		return false;
 	}
 
+	/**
+	 * Return an array of all Front-end Localizations, or false if none exist.
+	 * @return array|bool
+	 */
 	public function get_frontend_localizations() {
-		return static::$front_localized_data;
+		if ( ! empty( static::$front_localized_data ) ) {
+			return static::$front_localized_data;
+		}
+		return false;
 	}
 
+	/**
+	 * Return an array of all Admin Localizations, or false if none exist.
+	 * @return array|bool
+	 */
 	public function get_admin_localizations() {
-		return static::$admin_localized_data;
+		if ( ! empty( static::$admin_localized_data ) ) {
+			return static::$admin_localized_data;
+		}
+		return false;
 	}
 
 	//======================================================================
 	// INTERNAL API METHODS
 	//======================================================================
 
+	/**
+	 * Internal API Method used by add_front_endpoint and add_admin_endpoint,
+	 * to register an endpoint with Wordpress.
+	 *
+	 * @param $func_name
+	 * @param $context
+	 *
+	 * @return int
+	 * @throws \Exception
+	 */
 	private function add_endpoint( $func_name, $context ) {
 		if ( function_exists( $func_name ) || method_exists( $this, $func_name ) ) {
 			$context = $this->set_context( $context );
+
+			$url = $this->get_endpoint_url() . '/' . $func_name;
+			array_push( static::$endpoint_urls, $url );
+
 			return array_push( static::$$context['endpoint'], $func_name );
 		}
 		throw new \Exception( 'Endpoint function does not exist' );
 	}
 
+	/**
+	 * Internal API Method used by remove_front_endpoint and remove_admin_endpoint,
+	 * to de-register an endpoint with Wordpress.
+	 * @param $func_name
+	 * @param $context
+	 *
+	 * @return array
+	 * @throws \Exception
+	 */
 	private function remove_endpoint( $func_name, $context ) {
 		if ( in_array( $func_name, $context ) ) {
 			$context = $this->set_context( $context );
@@ -205,6 +279,15 @@ class Ajax_Handler extends BASE_API\Base_API {
 		throw new \Exception( 'Cannot remove an endpoint that doesn\'t exist' );
 	}
 
+	/**
+	 * Internal API Method used by remove_front_localization and remove_admin_localization,
+	 * to de-register a localization with Wordpress.
+	 * @param $js_handle
+	 * @param $context
+	 *
+	 * @return bool
+	 * @throws \Exception
+	 */
 	private function remove_localization( $js_handle, $context ) {
 		$context = $this->set_context( $context );
 
@@ -221,35 +304,60 @@ class Ajax_Handler extends BASE_API\Base_API {
 		return false;
 	}
 
-	//TODO need to make it possible to localize no data.
+	/**
+	 * Internal API Method used to register localizations with WordPress.
+	 * @param $endpoint
+	 * @param $js_handle
+	 * @param $local_handle
+	 * @param array $data
+	 * @param $context
+	 *
+	 * @return array
+	 * @throws \Exception
+	 */
 	private function add_localization( $endpoint, $js_handle, $local_handle, $data = array(), $context ) {
 
-		if ( true ) {
-			$context = $this->set_context( $context );
-
-			if ( false !== $this->recursive_array_search( $local_handle, static::$$context['collection'] ) ) {
-				return wp_parse_args(
-						static::$$context['collection'][ $local_handle ]['data'],
-						$data
-				);
-			}
-			$temp[$local_handle] = array(
-					'endpoint'     => $endpoint,
-					'endpointUrl'  => $context['url'] . '/' . $endpoint,
-					'jsHandle'     => $js_handle,
-					'localHandle'  => $local_handle,
-					'data'         => $data,
-//					'security'     => wp_create_nonce( 'hewufihweu' )
-			);
-			return static::$$context['collection'] = array_merge( static::$$context['collection'], $temp );
+		if ( ! wp_script_is( $js_handle ) ) {
+			throw new \Exception( 'Javascript handle has not been registered with WordPress.' );
 		}
-		return false;
+
+		if ( ! $this->endpoint_exists( $endpoint ) ) {
+			throw new \Exception( 'Endpoint to add_localization has not been registered with WordPress.' );
+		}
+
+		$context = $this->set_context( $context );
+
+		if ( $this->localization_exists( $local_handle, $context )  ) {
+			return wp_parse_args(
+					static::$$context['collection'][ $local_handle ]['data'],
+					$data
+			);
+		}
+		$temp[$local_handle] = array(
+				'endpointUrl'  => $context['url'] . '/' . $endpoint,
+				'jsHandle'     => $js_handle,
+				'localHandle'  => $local_handle,
+				'data'         => $data,
+				'security'     => wp_create_nonce( static::NONCE )
+		);
+		return static::$$context['collection'] = array_merge(
+				static::$$context['collection'],
+				array_filter( $temp )
+		);
 	}
+
 
 	//======================================================================
 	// CLASS SPECIFIC HELPER FUNCTIONS
 	//======================================================================
 
+	/**
+	 * Method used internally to determine whether a given function should be used
+	 * to register or de-register Admin or Frontend processes..
+	 * @param $context
+	 *
+	 * @return array
+	 */
 	private function set_context( $context ) {
 		if ( $context === 'admin_endpoints' ) {
 			return array(
@@ -267,20 +375,78 @@ class Ajax_Handler extends BASE_API\Base_API {
 		);
 	}
 
+	/**
+	 * Interal method used to help build a registered endpoints URL.
+	 * @return string|void
+	 */
 	private function get_endpoint_url() {
 		return site_url( 'ajax' );
 	}
 
+	/**
+	 * Allows a quick check to see if an endpoint exists.
+	 * @param $endpoint
+	 *
+	 * @return bool
+	 */
+	public function endpoint_exists( $endpoint ) {
+		return in_array( $endpoint, static::$front_endpoints );
+	}
+
+	/**
+	 * Allows  quick check to see if a localization exists.
+	 * @param $local_handle
+	 * @param $context
+	 *
+	 * @return bool|int|string
+	 */
+	public function localization_exists( $local_handle, $context ) {
+		return $this->recursive_array_search( $local_handle, static::$$context['collection'] );
+	}
+
+	/**
+	 * Internal Method used to actually register all localizations with WordPress.
+	 *
+	 * @uses wp_localize_script
+	 * @param $localized_array
+	 */
 	private function register_localizations( $localized_array ) {
 		foreach ( $localized_array as $handle ) {
 			wp_localize_script( $handle['jsHandle'], $handle['localHandle'], $handle );
 		}
 	}
 
+	/**
+	 * Method makes multiple queries internally and returns an array of data for use
+	 * by the internal localization method.
+	 * @return array
+	 */
+	private function get_default_localization_data() {
+		return array(
+				'frontEndpoints'    => $this->get_frontend_endpoints(),
+				'adminEndpoints'    => $this->get_admin_endpoints(),
+				'frontLocalization' => $this->get_frontend_localizations(),
+				'adminLocalization' => $this->get_admin_localizations(),
+				'siteURL'            => site_url(),
+				'security'           => wp_nonce_field( static::NONCE ),
+				'endpointURLs'       => static::$endpoint_urls,
+				'endpointPrefix'     => static::$rewrite_endpoint
+		);
+	}
+
 	//======================================================================
 	// GENERIC HELPER FUNCTIONS
 	//======================================================================
 
+	/**
+	 * Generic Method for removing an element or elements from an array.
+	 * @param $el
+	 * @param $collection
+	 * @param int $length
+	 *
+	 * @return array
+	 * @throws \Exception
+	 */
 	private function remove_element( $el, $collection, $length = 1 ) {
 		$key = array_search( $el, $collection );
 
@@ -291,6 +457,13 @@ class Ajax_Handler extends BASE_API\Base_API {
 		return array_splice( $collection, $key, $length );
 	}
 
+	/**
+	 * Recursively search an array for a give key.
+	 * @param $needle
+	 * @param $haystack
+	 *
+	 * @return bool|int|string
+	 */
 	private function recursive_array_search( $needle, $haystack ) {
 		foreach ( $haystack as $key => $value ) {
 			$current_key = $key;
@@ -304,70 +477,4 @@ class Ajax_Handler extends BASE_API\Base_API {
 		}
 		return false;
 	}
-}
-
-
-class MyAjax extends BASE_API\Base_API {
-
-	public function register_default_endpoint() {
-
-		$data = $this->localize_debug_data();
-		$this->add_admin_localization(
-				'documentation',
-				'ajax_handler_js',
-				'ajaxHandlerDefault',
-				$this->localize_debug_data()
-		);
-	}
-
-	private function localize_debug_data() {
-//		if ( defined( 'AJAX_HANDLER_DEBUG' ) && true === 'AJAX_HANDLER_DEBUG' ) {
-//			return array(
-//				'front_endpoints'    => $this->get_frontend_endpoints(),
-//				'admin_endpoints'    => $this->get_admin_endpoints(),
-//				'front_localization' => $this->get_frontend_localizations(),
-//				'admin_localization' => $this->get_admin_localizations()
-//			);
-//		}
-		return array(
-				'front_endpoints'    => $this->get_frontend_endpoints(),
-				'admin_endpoints'    => $this->get_admin_endpoints(),
-				'front_localization' => $this->get_frontend_localizations(),
-				'admin_localization' => $this->get_admin_localizations(),
-				'siteURL'            => site_url()
-		);
-
-//		return array();
-	}
-
-	private function is_assoc( $array ) {
-		return (bool)count( array_filter( array_keys( $array ), 'is_string' ) );
-	}
-
-	private function is_valid_localization( $js_handle, $data ) {
-
-		if ( empty( $data ) ) {
-			throw new \Exception( 'Data argument was empty' );
-		}
-
-		if ( ! is_array( $data ) ) {
-			throw new \Exception( 'Data argument must be an array' );
-		}
-
-		if ( ! $this->is_assoc( $data ) ) {
-			throw new \Exception( 'Data argument must be an associative array' );
-		}
-
-		$values = array_values( $data );
-		if ( ! function_exists( $values[0] ) ) {
-			throw new \Exception( 'Function referenced in the Data array does not exist.' );
-		}
-
-		if ( ! wp_script_is( $js_handle ) ) {
-			throw new \Exception( 'Javascript handle has not been registered with WordPress.' );
-		}
-
-		return true;
-	}
-
 }
