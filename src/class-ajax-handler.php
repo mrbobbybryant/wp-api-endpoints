@@ -197,10 +197,7 @@ class Ajax_Handler extends BASE_API\Base_API {
 	 * @return array|bool
 	 */
 	public function get_frontend_endpoints() {
-		if ( ! empty( self::$front_endpoints ) ) {
-			return self::$front_endpoints;
-		}
-		return false;
+		return $this->empty_check( self::$front_endpoints );
 	}
 
 	/**
@@ -208,10 +205,7 @@ class Ajax_Handler extends BASE_API\Base_API {
 	 * @return array|bool
 	 */
 	public function get_admin_endpoints() {
-		if ( ! empty( self::$admin_endpoints ) ) {
-			return self::$admin_endpoints;
-		}
-		return false;
+		return $this->empty_check( self::$admin_endpoints );
 	}
 
 	/**
@@ -219,10 +213,7 @@ class Ajax_Handler extends BASE_API\Base_API {
 	 * @return array|bool
 	 */
 	public function get_frontend_localizations() {
-		if ( ! empty( static::$front_localized_data ) ) {
-			return static::$front_localized_data;
-		}
-		return false;
+		return $this->empty_check( static::$front_localized_data );
 	}
 
 	/**
@@ -230,10 +221,7 @@ class Ajax_Handler extends BASE_API\Base_API {
 	 * @return array|bool
 	 */
 	public function get_admin_localizations() {
-		if ( ! empty( static::$admin_localized_data ) ) {
-			return static::$admin_localized_data;
-		}
-		return false;
+		return $this->empty_check( static::$admin_localized_data );
 	}
 
 	//======================================================================
@@ -475,6 +463,13 @@ class Ajax_Handler extends BASE_API\Base_API {
 				return $current_key;
 			}
 		}
+		return false;
+	}
+
+	private function empty_check( $value ) {
+        if ( ! empty( $value ) ) {
+      return $value;
+    }
 		return false;
 	}
 }
