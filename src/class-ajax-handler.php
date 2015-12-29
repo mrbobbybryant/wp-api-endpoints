@@ -227,11 +227,6 @@ class Ajax_Handler extends BASE_API\Base_API {
 		if ( true ) {
 			$context = $this->set_context( $context );
 
-			//Create an endpoint if one doesn't exist.
-			if ( ! in_array( $endpoint, static::$$context['endpoint'] ) ) {
-				call_user_func( array( $this, $context['method'] ), $endpoint );
-			}
-
 			if ( false !== $this->recursive_array_search( $local_handle, static::$$context['collection'] ) ) {
 				return wp_parse_args(
 						static::$$context['collection'][ $local_handle ]['data'],
